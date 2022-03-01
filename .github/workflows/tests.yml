@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-20.04
     name: Build
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Build all
       run: ./script/util/make.sh build -j2
 
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-20.04
     name: Test
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Test all
       run: ./script/util/make.sh test-all -j2
 
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-20.04
     name: Linter
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         fetch-depth: '0'
     - name: Run Linter
@@ -45,7 +45,7 @@ jobs:
     steps:
     - name: Install htpasswd for setting up private registry
       run: sudo apt-get update -y && sudo apt-get --no-install-recommends install -y apache2-utils
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run integration test
       env:
         DOCKER_BUILD_ARGS: ${{ matrix.buildargs }}
@@ -62,7 +62,7 @@ jobs:
     steps:
     - name: Install htpasswd for setting up private registry
       run: sudo apt-get update -y && sudo apt-get --no-install-recommends install -y apache2-utils
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run test for optimize subcommand of ctr-remote
       env:
         DOCKER_BUILD_ARGS: ${{ matrix.buildargs }}
@@ -82,7 +82,7 @@ jobs:
     steps:
     - name: Install htpasswd for setting up private registry
       run: sudo apt-get update -y && sudo apt-get --no-install-recommends install -y apache2-utils
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run test for pulling image from private registry on Kubernetes
       env:
         DOCKER_BUILD_ARGS: ${{ matrix.buildargs }}
@@ -103,7 +103,7 @@ jobs:
     steps:
     - name: Install htpasswd for setting up private registry
       run: sudo apt-get update -y && sudo apt-get --no-install-recommends install -y apache2-utils
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run test for pulling image from private registry on Kubernetes with CRI keychain mode
       env:
         DOCKER_BUILD_ARGS: ${{ matrix.buildargs }}
@@ -122,7 +122,7 @@ jobs:
         - buildargs: ""
           builtin: "true"
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Validate containerd through CRI
       env:
         DOCKER_BUILD_ARGS: ${{ matrix.buildargs }}
@@ -133,7 +133,7 @@ jobs:
     runs-on: ubuntu-20.04
     name: CRIValidationCRIO
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Validate CRI-O through CRI
       run: make test-cri-o
 
@@ -153,7 +153,7 @@ jobs:
       run: |
         sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.9.3/yq_linux_amd64
         sudo chmod +x /usr/local/bin/yq
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: Run test with k3s
       run: make test-k3s
 
@@ -171,7 +171,7 @@ jobs:
       - uses: actions/setup-go@v2
         with:
           go-version: '1.17.x'
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/github.com/containerd/stargz-snapshotter
           fetch-depth: 25
