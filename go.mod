@@ -14,6 +14,7 @@ require (
 	github.com/docker/docker-credential-helpers v0.6.4 // indirect
 	github.com/docker/go-metrics v0.0.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/hanwen/go-fuse/v2 v2.1.0
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/moby/sys/mountinfo v0.4.1
@@ -25,14 +26,17 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/rs/xid v1.3.0
 	github.com/sirupsen/logrus v1.8.1
+	github.com/stretchr/testify v1.8.0 // indirect
 	github.com/urfave/cli v1.22.2
-	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
-	golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
-	google.golang.org/grpc v1.40.0
+	golang.org/x/net v0.3.1-0.20221206200815-1e63c2f08a10 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4
+	golang.org/x/sys v0.3.0
+	google.golang.org/genproto v0.0.0-20220502173005-c8bf987b8c21 // indirect
+	google.golang.org/grpc v1.49.0
+	google.golang.org/protobuf v1.28.1 // indirect
 	k8s.io/api v0.22.0
 	k8s.io/apimachinery v0.22.0
 	k8s.io/client-go v0.22.0
-	k8s.io/cri-api v0.22.0
 )
 
 replace (
