@@ -194,9 +194,14 @@ jobs:
           fuse-passthrough: "true"
     steps:
     - uses: actions/checkout@v6
+    # Pin the branch to a commit so that the build is reproducible and can be cached.
+    - name: Resolve containerd's main to a commit
+      id: containerd
+      if: matrix.buildargs != ''
+      run: echo "sha=$(git ls-remote https://github.com/containerd/containerd main | cut -f1)" >> "${GITHUB_OUTPUT}"
     - name: Validate containerd through CRI
       env:
-        DOCKER_BUILD_ARGS: ${{ matrix.buildargs }}
+        DOCKER_BUILD_ARGS: ${{ steps.containerd.outputs.sha && format('--build-arg=CONTAINERD_VERSION={0}', steps.containerd.outputs.sha) || matrix.buildargs }}
         BUILTIN_SNAPSHOTTER: ${{ matrix.builtin }}
         METADATA_STORE: ${{ matrix.metadata-store }}
         FUSE_PASSTHROUGH: ${{ matrix.fuse-passthrough }}
