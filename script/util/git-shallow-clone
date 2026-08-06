@@ -14,14 +14,22 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# Usage: git-shallow-clone.sh <url> <ref> <dir>
+# Usage: git shallow-clone -b <ref> <url> <dir>
 # Unlike "git clone -b", the ref can be a commit SHA as well as a branch or tag.
 
 set -euo pipefail
 
-mkdir -p "${3}"
-cd "${3}"
+while getopts "b:" OPT ; do
+    case "${OPT}" in
+        b) REF="${OPTARG}" ;;
+        *) exit 1 ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+mkdir -p "${2}"
+cd "${2}"
 git init -q
 git remote add origin "${1}"
-git fetch -q --depth 1 origin "${2}"
+git fetch -q --depth 1 origin "${REF}"
 git checkout -q FETCH_HEAD

@@ -42,8 +42,8 @@ FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS containerd-dev
 ARG CONTAINERD_VERSION
 ARG TARGETARCH
 COPY script/util/git-shallow-clone /usr/local/bin/git-shallow-clone
-RUN git-shallow-clone https://github.com/containerd/containerd ${CONTAINERD_VERSION} \
-                      $GOPATH/src/github.com/containerd/containerd && \
+RUN git shallow-clone -b ${CONTAINERD_VERSION} \
+                      https://github.com/containerd/containerd $GOPATH/src/github.com/containerd/containerd && \
     cd $GOPATH/src/github.com/containerd/containerd && \
     GOARCH=$TARGETARCH make && DESTDIR=/out/ PREFIX= make install
 
@@ -53,8 +53,8 @@ ARG CONTAINERD_VERSION
 ARG TARGETARCH
 COPY script/util/git-shallow-clone /usr/local/bin/git-shallow-clone
 COPY . $GOPATH/src/github.com/containerd/stargz-snapshotter
-RUN git-shallow-clone https://github.com/containerd/containerd ${CONTAINERD_VERSION} \
-                      $GOPATH/src/github.com/containerd/containerd && \
+RUN git shallow-clone -b ${CONTAINERD_VERSION} \
+                      https://github.com/containerd/containerd $GOPATH/src/github.com/containerd/containerd && \
     cd $GOPATH/src/github.com/containerd/containerd && \
     echo 'require github.com/containerd/stargz-snapshotter v0.0.0' >> go.mod && \
     for f in go.mod api/go.mod ; do \
@@ -111,8 +111,8 @@ FROM golang:1.26-bookworm AS cri-o-dev
 ARG CRIO_VERSION
 COPY script/util/git-shallow-clone /usr/local/bin/git-shallow-clone
 RUN apt-get update -y && apt-get install -y libseccomp-dev libgpgme-dev && \
-    git-shallow-clone https://github.com/cri-o/cri-o ${CRIO_VERSION} \
-                      $GOPATH/src/github.com/cri-o/cri-o && \
+    git shallow-clone -b ${CRIO_VERSION} \
+                      https://github.com/cri-o/cri-o $GOPATH/src/github.com/cri-o/cri-o && \
     cd $GOPATH/src/github.com/cri-o/cri-o && \
     make && make install PREFIX=/out/ && \
     curl -sSL --output /out/crio.service https://raw.githubusercontent.com/cri-o/cri-o/${CRIO_VERSION}/contrib/systemd/crio.service
@@ -130,8 +130,8 @@ RUN apt-get update -y && apt-get install -y gcc git libc6-dev libglib2.0-dev pkg
 FROM golang-base AS containers-common-dev
 ARG COMMON_VERSION
 COPY script/util/git-shallow-clone /usr/local/bin/git-shallow-clone
-RUN git-shallow-clone https://github.com/containers/common ${COMMON_VERSION} \
-                      $GOPATH/src/github.com/containers/common && \
+RUN git shallow-clone -b ${COMMON_VERSION} \
+                      https://github.com/containers/common $GOPATH/src/github.com/containers/common && \
     cd $GOPATH/src/github.com/containers/common && \
     mkdir /out/ && cp pkg/seccomp/seccomp.json /out/
 
