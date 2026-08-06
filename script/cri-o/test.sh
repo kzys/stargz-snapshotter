@@ -32,6 +32,12 @@ if [ "${CRI_NO_RECREATE:-}" != "true" ] ; then
     docker buildx build --load ${DOCKER_BUILD_ARGS:-} $(docker_build_cache_args base) -t "${PREPARE_NODE_IMAGE}" --target containerd-base "${REPO}"
 fi
 
+# Building the node image is the same work for every variant of the matrix, so
+# one job does it and fills the cache the others read.
+if [ "${CRI_PREPARE_ONLY:-}" == "true" ] ; then
+    exit 0
+fi
+
 USE_METADATA_STORE="memory"
 if [ "${METADATA_STORE:-}" != "" ] ; then
     USE_METADATA_STORE="${METADATA_STORE}"

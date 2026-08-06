@@ -247,9 +247,30 @@ jobs:
         TRANSFER_SERVICE: ${{ matrix.transfer-service }}
       run: make test-cri-containerd
 
+  prepare-cri-cri-o:
+    runs-on: ubuntu-24.04
+    name: PrepareCRIValidationCRIO
+    steps:
+    - name: Install the latest docker
+      run: |
+        sudo apt-get remove moby-cli moby-engine
+        wget -O get-docker.sh https://get.docker.com
+        sh get-docker.sh
+    - uses: actions/checkout@v6
+    - uses: docker/setup-buildx-action@v4
+    - uses: ./.github/actions/expose-actions-cache
+    - name: Build the node image
+      env:
+        DOCKER_BUILD_ARGS: "--build-arg=RUNC_VERSION=v1.0.3"
+        DOCKER_BUILD_CACHE_SCOPE: cri-o
+        DOCKER_BUILD_CACHE_EXPORT: "true"
+        CRI_PREPARE_ONLY: "true"
+      run: make test-cri-o
+
   test-cri-cri-o:
     runs-on: ubuntu-24.04
     name: CRIValidationCRIO
+    needs: prepare-cri-cri-o
     strategy:
       fail-fast: false
       matrix:
