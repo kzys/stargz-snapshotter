@@ -223,9 +223,12 @@ jobs:
         wget -O get-docker.sh https://get.docker.com
         sh get-docker.sh
     - uses: actions/checkout@v6
+    - uses: docker/setup-buildx-action@v4
+    - uses: ./.github/actions/expose-actions-cache
     - name: Validate CRI-O through CRI
       env:
         DOCKER_BUILD_ARGS: "--build-arg=RUNC_VERSION=v1.0.3"
+        DOCKER_BUILD_CACHE_SCOPE: cri-o
         METADATA_STORE: ${{ matrix.metadata-store }}
       run: |
         # needed to pass "runtime should output OOMKilled reason" test

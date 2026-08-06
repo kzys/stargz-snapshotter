@@ -1,0 +1,25 @@
+name: Expose the Actions cache
+description: >
+  Re-exports the credentials of the Actions cache service. GitHub gives them to
+  actions but not to run steps, so "docker buildx build --cache-to type=gha"
+  cannot see them when buildx is invoked from a script.
+
+runs:
+  using: composite
+  steps:
+  - uses: actions/github-script@v7
+    with:
+      # buildx reads these four from its own environment and passes them to
+      # BuildKit as cache attributes. ACTIONS_CACHE_SERVICE_V2 selects the API
+      # version, which decides whether the URL is taken from ACTIONS_RESULTS_URL
+      # or ACTIONS_CACHE_URL, so all four matter.
+      # https://github.com/docker/buildx/blob/v0.36.1/build/opt.go#L1493-L1524
+      # https://github.com/moby/buildkit/blob/v0.32.2/cache/remotecache/gha/gha.go#L45-L52
+      script: |
+        for (const name of ['ACTIONS_RUNTIME_TOKEN', 'ACTIONS_RESULTS_URL',
+                            'ACTIONS_CACHE_URL', 'ACTIONS_CACHE_SERVICE_V2']) {
+          const value = process.env[name]
+          if (value) {
+            core.exportVariable(name, value)
+          }
+        }

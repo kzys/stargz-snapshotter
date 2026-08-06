@@ -28,8 +28,8 @@ GINKGO_VERSION=v1.16.5
 if [ "${CRI_NO_RECREATE:-}" != "true" ] ; then
     echo "Preparing node image..."
 
-    docker build ${DOCKER_BUILD_ARGS:-} -t "${NODE_BASE_IMAGE_NAME}" --target crio-stargz-store "${REPO}"
-    docker build ${DOCKER_BUILD_ARGS:-} -t "${PREPARE_NODE_IMAGE}" --target containerd-base "${REPO}"
+    docker buildx build --load ${DOCKER_BUILD_ARGS:-} $(docker_build_cache_args node) -t "${NODE_BASE_IMAGE_NAME}" --target crio-stargz-store "${REPO}"
+    docker buildx build --load ${DOCKER_BUILD_ARGS:-} $(docker_build_cache_args base) -t "${PREPARE_NODE_IMAGE}" --target containerd-base "${REPO}"
 fi
 
 USE_METADATA_STORE="memory"

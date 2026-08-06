@@ -53,6 +53,18 @@ function check_remote_snapshots {
     fi
 }
 
+# Buildx cache flags for one build, empty unless DOCKER_BUILD_CACHE_SCOPE is set.
+# Each build needs a scope of its own; builds that share one overwrite each
+# other's cache.
+function docker_build_cache_args {
+    local NAME="${1}"
+    if [ -z "${DOCKER_BUILD_CACHE_SCOPE:-}" ] ; then
+        return
+    fi
+    echo "--cache-from=type=gha,scope=${DOCKER_BUILD_CACHE_SCOPE}-${NAME}" \
+         "--cache-to=type=gha,mode=max,scope=${DOCKER_BUILD_CACHE_SCOPE}-${NAME}"
+}
+
 # Get version from ARG directive in the specified Dockerfile.
 function get_version_from_arg {
     local DOCKERFILE="${1}"
