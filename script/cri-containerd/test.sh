@@ -36,8 +36,14 @@ if [ "${CRI_NO_RECREATE:-}" != "true" ] ; then
         TARGET_STAGE="--target kind-builtin-snapshotter"
     fi
 
-    docker build ${DOCKER_BUILD_ARGS:-} -t "${NODE_BASE_IMAGE_NAME}" ${TARGET_STAGE} "${REPO}"
-    docker build ${DOCKER_BUILD_ARGS:-} -t "${PREPARE_NODE_IMAGE}" --target containerd-base "${REPO}"
+    docker buildx build --load ${DOCKER_BUILD_ARGS:-} $(docker_build_cache_args node) -t "${NODE_BASE_IMAGE_NAME}" ${TARGET_STAGE} "${REPO}"
+    docker buildx build --load ${DOCKER_BUILD_ARGS:-} $(docker_build_cache_args base) -t "${PREPARE_NODE_IMAGE}" --target containerd-base "${REPO}"
+fi
+
+# Building the node image is the same work for every variant of the matrix, so
+# one job does it and fills the cache the others read.
+if [ "${CRI_PREPARE_ONLY:-}" == "true" ] ; then
+    exit 0
 fi
 
 TMP_CONTEXT=$(mktemp -d)
