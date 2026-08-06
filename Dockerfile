@@ -45,7 +45,8 @@ COPY script/util/git-shallow-clone /usr/local/bin/git-shallow-clone
 RUN git shallow-clone -b ${CONTAINERD_VERSION} \
                       https://github.com/containerd/containerd $GOPATH/src/github.com/containerd/containerd && \
     cd $GOPATH/src/github.com/containerd/containerd && \
-    GOARCH=$TARGETARCH make && DESTDIR=/out/ PREFIX= make install
+    GOARCH=$TARGETARCH make && DESTDIR=/out/ PREFIX= make install && \
+    go clean -cache
 
 # Build containerd with builtin stargz snapshotter
 FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS containerd-snapshotter-dev
@@ -62,7 +63,8 @@ RUN git shallow-clone -b ${CONTAINERD_VERSION} \
       echo 'replace github.com/containerd/stargz-snapshotter/estargz => '$GOPATH'/src/github.com/containerd/stargz-snapshotter/estargz' >> "$f" ; \
     done && \
     echo 'package main \nimport _ "github.com/containerd/stargz-snapshotter/service/plugin"' > cmd/containerd/builtins_stargz_snapshotter.go && \
-    make vendor && GOARCH=$TARGETARCH make && DESTDIR=/out/ PREFIX= make install
+    make vendor && GOARCH=$TARGETARCH make && DESTDIR=/out/ PREFIX= make install && \
+    go clean -cache
 
 # Build runc
 FROM golang:1.26-bookworm AS runc-dev
@@ -71,7 +73,8 @@ RUN apt-get update -y && apt-get install -y libseccomp-dev && \
     git clone -b ${RUNC_VERSION} --depth 1 \
               https://github.com/opencontainers/runc $GOPATH/src/github.com/opencontainers/runc && \
     cd $GOPATH/src/github.com/opencontainers/runc && \
-    make && make install PREFIX=/out/
+    make && make install PREFIX=/out/ && \
+    go clean -cache
 
 # Build stargz snapshotter
 FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS snapshotter-dev
@@ -84,7 +87,8 @@ ARG CGO_ENABLED
 RUN cd $GOPATH/src/github.com/containerd/stargz-snapshotter && \
     PREFIX=/out/ GOARCH=${TARGETARCH:-amd64} GO_BUILD_FLAGS=${SNAPSHOTTER_BUILD_FLAGS} make containerd-stargz-grpc && \
     PREFIX=/out/ GOARCH=${TARGETARCH:-amd64} GO_BUILD_FLAGS=${CTR_REMOTE_BUILD_FLAGS} make ctr-remote && \
-    PREFIX=/out/ GOARCH=${TARGETARCH:-amd64} GO_BUILD_FLAGS=${CTR_REMOTE_BUILD_FLAGS} make stargz-fuse-manager
+    PREFIX=/out/ GOARCH=${TARGETARCH:-amd64} GO_BUILD_FLAGS=${CTR_REMOTE_BUILD_FLAGS} make stargz-fuse-manager && \
+    go clean -cache
 
 # Build stargz store
 FROM golang-base AS stargz-store-dev
@@ -95,7 +99,8 @@ ARG CTR_REMOTE_BUILD_FLAGS
 COPY . $GOPATH/src/github.com/containerd/stargz-snapshotter
 ARG CGO_ENABLED
 RUN cd $GOPATH/src/github.com/containerd/stargz-snapshotter && \
-    PREFIX=/out/ GOARCH=${TARGETARCH:-amd64} GO_BUILD_FLAGS=${SNAPSHOTTER_BUILD_FLAGS} make stargz-store stargz-store-helper
+    PREFIX=/out/ GOARCH=${TARGETARCH:-amd64} GO_BUILD_FLAGS=${SNAPSHOTTER_BUILD_FLAGS} make stargz-store stargz-store-helper && \
+    go clean -cache
 
 # Build podman
 FROM golang-base AS podman-dev
@@ -115,6 +120,7 @@ RUN apt-get update -y && apt-get install -y libseccomp-dev libgpgme-dev && \
                       https://github.com/cri-o/cri-o $GOPATH/src/github.com/cri-o/cri-o && \
     cd $GOPATH/src/github.com/cri-o/cri-o && \
     make && make install PREFIX=/out/ && \
+    go clean -cache && \
     curl -sSL --output /out/crio.service https://raw.githubusercontent.com/cri-o/cri-o/${CRIO_VERSION}/contrib/systemd/crio.service
 
 # Build conmon
