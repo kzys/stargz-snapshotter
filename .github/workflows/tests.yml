@@ -155,9 +155,49 @@ jobs:
         BUILTIN_SNAPSHOTTER: ${{ matrix.builtin }}
       run: make test-criauth
 
+  resolve-cri-containerd:
+    runs-on: ubuntu-24.04
+    name: ResolveCRIValidationContainerd
+    outputs:
+      containerd-sha: ${{ steps.containerd.outputs.sha }}
+    steps:
+    # Pin the branch to a commit, so that every job of this run builds the same
+    # tree and they all share one cache entry.
+    - name: Resolve containerd's main to a commit
+      id: containerd
+      run: echo "sha=$(git ls-remote https://github.com/containerd/containerd main | cut -f1)" >> "${GITHUB_OUTPUT}"
+
+  prepare-cri-containerd:
+    runs-on: ubuntu-24.04
+    name: PrepareCRIValidationContainerd
+    needs: resolve-cri-containerd
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - buildargs: ""
+          builtin: "false"
+        - buildargs: "--build-arg=CONTAINERD_VERSION=main"
+          builtin: "false"
+        - buildargs: "--build-arg=CONTAINERD_VERSION=main"
+          builtin: "true"
+    steps:
+    - uses: actions/checkout@v6
+    - uses: docker/setup-buildx-action@v4
+    - uses: ./.github/actions/expose-actions-cache
+    - name: Build the node image
+      env:
+        DOCKER_BUILD_ARGS: ${{ matrix.buildargs != '' && format('--build-arg=CONTAINERD_VERSION={0}', needs.resolve-cri-containerd.outputs.containerd-sha) || '' }}
+        BUILTIN_SNAPSHOTTER: ${{ matrix.builtin }}
+        DOCKER_BUILD_CACHE_SCOPE: cri-containerd-${{ matrix.builtin }}-${{ matrix.buildargs != '' && 'main' || 'released' }}
+        DOCKER_BUILD_CACHE_EXPORT: "true"
+        CRI_PREPARE_ONLY: "true"
+      run: make test-cri-containerd
+
   test-cri-containerd:
     runs-on: ubuntu-24.04
     name: CRIValidationContainerd
+    needs: [resolve-cri-containerd, prepare-cri-containerd]
     strategy:
       fail-fast: false
       matrix:
@@ -194,14 +234,12 @@ jobs:
           fuse-passthrough: "true"
     steps:
     - uses: actions/checkout@v6
-    # Pin the branch to a commit so that the build is reproducible and can be cached.
-    - name: Resolve containerd's main to a commit
-      id: containerd
-      if: matrix.buildargs != ''
-      run: echo "sha=$(git ls-remote https://github.com/containerd/containerd main | cut -f1)" >> "${GITHUB_OUTPUT}"
+    - uses: docker/setup-buildx-action@v4
+    - uses: ./.github/actions/expose-actions-cache
     - name: Validate containerd through CRI
       env:
-        DOCKER_BUILD_ARGS: ${{ steps.containerd.outputs.sha && format('--build-arg=CONTAINERD_VERSION={0}', steps.containerd.outputs.sha) || matrix.buildargs }}
+        DOCKER_BUILD_ARGS: ${{ matrix.buildargs != '' && format('--build-arg=CONTAINERD_VERSION={0}', needs.resolve-cri-containerd.outputs.containerd-sha) || '' }}
+        DOCKER_BUILD_CACHE_SCOPE: cri-containerd-${{ matrix.builtin }}-${{ matrix.buildargs != '' && 'main' || 'released' }}
         BUILTIN_SNAPSHOTTER: ${{ matrix.builtin }}
         METADATA_STORE: ${{ matrix.metadata-store }}
         FUSE_PASSTHROUGH: ${{ matrix.fuse-passthrough }}
