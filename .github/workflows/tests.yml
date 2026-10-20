@@ -244,14 +244,39 @@ jobs:
     - name: Test Podman (rootless)
       run: make test-podman
 
-  test-k3s:
+  # The k3s node image embeds the snapshotter and takes several minutes to
+  # build, so build it once here and hand it to the k3s jobs as an artifact.
+  k3s-node-image:
     runs-on: ubuntu-24.04
-    name: K3S
+    name: K3SNodeImage
     steps:
     - uses: actions/setup-go@v7
       with:
         go-version: '1.27'
         check-latest: true
+    - uses: actions/checkout@v7
+    - name: Build k3s node image
+      run: |
+        image="$(./script/k3s/build-node-image.sh)"
+        echo "${image}" > k3s-node-image.ref
+        docker save "${image}" | zstd -T0 > k3s-node-image.tar.zst
+        ls -la k3s-node-image.*
+    - uses: actions/upload-artifact@v7
+      with:
+        name: k3s-node-image
+        path: |
+          k3s-node-image.ref
+          k3s-node-image.tar.zst
+        # already zstd-compressed
+        compression-level: 0
+        # long enough to re-run a failed k3s job, short because it is large
+        retention-days: 3
+
+  test-k3s:
+    runs-on: ubuntu-24.04
+    name: K3S
+    needs: k3s-node-image
+    steps:
     - name: Install k3d
       run: |
         wget -q -O - https://raw.githubusercontent.com/rancher/k3d/v5.8.3/install.sh | bash
@@ -262,6 +287,8 @@ jobs:
         sudo wget -O /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v4.9.3/yq_linux_amd64
         sudo chmod +x /usr/local/bin/yq
     - uses: actions/checkout@v7
+    - name: Load k3s node image
+      uses: ./.github/actions/load-k3s-node-image
     - name: Run test with k3s
       run: make test-k3s
 
@@ -276,13 +303,10 @@ jobs:
   test-k3s-argo-workflow:
     runs-on: ubuntu-24.04
     name: K3SArgoWorkflow
+    needs: k3s-node-image
     env:
       RESULT_DIR: ${{ github.workspace }}/argo-workflow/
     steps:
-    - uses: actions/setup-go@v7
-      with:
-        go-version: '1.27'
-        check-latest: true
     - name: Install k3d
       run: |
         wget -q -O - https://raw.githubusercontent.com/rancher/k3d/v5.8.3/install.sh | bash
@@ -298,6 +322,8 @@ jobs:
         sudo rm -rf /usr/local/lib/android # will release about 10 GB if you don't need Android
         sudo rm -rf /usr/share/dotnet # will release about 20GB if you don't need .NET
     - uses: actions/checkout@v7
+    - name: Load k3s node image
+      uses: ./.github/actions/load-k3s-node-image
     - name: Prepare directories
       run: mkdir "${RESULT_DIR}"
     - name: Get instance information
