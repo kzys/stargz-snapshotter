@@ -81,8 +81,15 @@ function run {
     go_ci_yaml "${IMAGE_TYPE}" > "${TMP_GOCI_YAML}"
 
     # Create argo cluster
-    k3d cluster create "${K3S_CLUSTER_NAME}" --image="${K3S_NODE_IMAGE}" \
-        --k3s-arg='--snapshotter='"${SNAPSHOTTER}"'@server:*;agent:*'
+    # See script/k3s/run-k3s.sh: bound the wait and show the node log on failure.
+    if ! k3d cluster create "${K3S_CLUSTER_NAME}" --image="${K3S_NODE_IMAGE}" \
+        --k3s-arg='--snapshotter='"${SNAPSHOTTER}"'@server:*;agent:*' \
+        --timeout "${K3S_CREATE_TIMEOUT:-5m}" --no-rollback ; then
+        echo "failed to create the k3s cluster; server node log:"
+        docker logs --tail 300 "k3d-${K3S_CLUSTER_NAME}-server-0" || true
+        k3d cluster delete "${K3S_CLUSTER_NAME}" || true
+        exit 1
+    fi
     kubectl create ns argo
     kubectl apply -n argo -f "${CUSTOM_ARGOYAML}"
     # workaround for argo failing to list namespaces

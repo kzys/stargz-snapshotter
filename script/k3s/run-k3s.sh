@@ -89,10 +89,18 @@ configs:
 EOF
 
 echo "Createing k3s cluster"
-k3d cluster create "${K3S_CLUSTER_NAME}" --image="${K3S_NODE_IMAGE}" \
+# Without a timeout k3d waits forever for the server to come up, and a
+# hung CI job gives no clue why; fail after a while and show the node log.
+# --no-rollback keeps the node around for that; the caller deletes the cluster.
+if ! k3d cluster create "${K3S_CLUSTER_NAME}" --image="${K3S_NODE_IMAGE}" \
     --registry-config="${TMP_BUILTIN_CONF}" -v "${K3S_REGISTRY_CA}":/registry.crt:ro \
     --k3s-arg='--snapshotter=stargz@server:*;agent:*' \
-    --env "CONTAINERD_LOG_LEVEL=debug@server:*;agent:*"
+    --env "CONTAINERD_LOG_LEVEL=debug@server:*;agent:*" \
+    --timeout "${K3S_CREATE_TIMEOUT:-5m}" --no-rollback ; then
+    echo "failed to create the k3s cluster; server node log:"
+    docker logs --tail 300 "k3d-${K3S_CLUSTER_NAME}-server-0" || true
+    exit 1
+fi
 k3d kubeconfig get "${K3S_CLUSTER_NAME}" > "${K3S_USER_KUBECONFIG}"
 K3S_NODENAME="$(k3d node list | grep ${K3S_CLUSTER_NAME}-server-0 | cut -d " " -f 1 | tr -d '\n')"
 docker network connect "${REGISTRY_NETWORK}" "${K3S_NODENAME}"
