@@ -1,0 +1,19 @@
+name: Load k3s node image
+description: >
+  Downloads the k3s node image built by the k3s-node-image job, loads it into
+  Docker and exports its reference as K3S_NODE_IMAGE so the k3s test scripts
+  skip their own build.
+runs:
+  using: composite
+  steps:
+  - uses: actions/download-artifact@v8
+    with:
+      name: k3s-node-image
+      path: ${{ runner.temp }}/k3s-node-image
+  - shell: bash
+    working-directory: ${{ runner.temp }}/k3s-node-image
+    run: |
+      zstd -d -c k3s-node-image.tar.zst | docker load
+      image="$(cat k3s-node-image.ref)"
+      docker image inspect "${image}" > /dev/null
+      echo "K3S_NODE_IMAGE=${image}" >> "${GITHUB_ENV}"

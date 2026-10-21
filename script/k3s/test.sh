@@ -117,7 +117,6 @@ FAIL=
 if ! ( "${CONTEXT}"/run-k3s.sh "${K3S_CLUSTER_NAME}" \
                  "${K3S_KUBECONFIG}" \
                  "${AUTH_DIR}/certs/domain.crt" \
-                 "${REPO}" \
                  "${REGISTRY_NETWORK}" \
                  "${DOCKERCONFIG}" && \
          echo "Waiting until secrets fullly synced..." && \
