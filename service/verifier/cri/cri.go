@@ -52,6 +52,7 @@ func NewCRIVerifier(
 ) runtime.ImageServiceServer {
 	server := &instrumentedService{
 		verifyLock: new(namedmutex.NamedMutex),
+		connected:  make(chan struct{}),
 	}
 	go func() {
 		log.G(ctx).Debugf("Waiting for CRI service is started...")
@@ -60,6 +61,7 @@ func NewCRIVerifier(
 		var cc *containerd.Client
 		var sn snapshots.Snapshotter
 		var err error
+		defer close(server.connected)
 		for range 100 {
 			// wait for all backend services being ready to serve
 			if rc == nil {
@@ -103,7 +105,11 @@ func NewCRIVerifier(
 				server.criMu.Unlock()
 				return
 			}
-			time.Sleep(10 * time.Second)
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(10 * time.Second):
+			}
 		}
 		log.G(ctx).Warnf("no connection is available to the backend")
 	}()
@@ -115,38 +121,52 @@ type instrumentedService struct {
 
 	cri   runtime.ImageServiceClient
 	criMu sync.Mutex
+	// connected is closed once the attempt to connect to the backend is
+	// over; cri stays nil if it failed.
+	connected chan struct{}
 
 	verifier   *verifier.Verifier
 	verifyLock *namedmutex.NamedMutex
 }
 
-func (in *instrumentedService) getCRI() (c runtime.ImageServiceClient) {
+// getCRI returns the client for the backend CRI service, waiting for the
+// connection to be established first. The kubelet validates the image
+// service endpoint as soon as it starts, so an immediate error here makes it
+// exit instead of retrying.
+func (in *instrumentedService) getCRI(ctx context.Context) (runtime.ImageServiceClient, error) {
+	select {
+	case <-in.connected:
+	case <-ctx.Done():
+		return nil, fmt.Errorf("server is not initialized yet: %w", ctx.Err())
+	}
 	in.criMu.Lock()
-	c = in.cri
-	in.criMu.Unlock()
-	return
+	defer in.criMu.Unlock()
+	if in.cri == nil {
+		return nil, errors.New("server is not initialized: the backend CRI service or the snapshotter is not available")
+	}
+	return in.cri, nil
 }
 
 func (in *instrumentedService) ListImages(ctx context.Context, r *runtime.ListImagesRequest) (res *runtime.ListImagesResponse, err error) {
-	cri := in.getCRI()
-	if cri == nil {
-		return nil, errors.New("server is not initialized yet")
+	cri, err := in.getCRI(ctx)
+	if err != nil {
+		return nil, err
 	}
 	return cri.ListImages(ctx, r)
 }
 
 func (in *instrumentedService) ImageStatus(ctx context.Context, r *runtime.ImageStatusRequest) (res *runtime.ImageStatusResponse, err error) {
-	cri := in.getCRI()
-	if cri == nil {
-		return nil, errors.New("server is not initialized yet")
+	cri, err := in.getCRI(ctx)
+	if err != nil {
+		return nil, err
 	}
 	return cri.ImageStatus(ctx, r)
 }
 
 func (in *instrumentedService) PullImage(ctx context.Context, r *runtime.PullImageRequest) (res *runtime.PullImageResponse, err error) {
-	cri := in.getCRI()
-	if cri == nil {
-		return nil, errors.New("server is not initialized yet")
+	cri, err := in.getCRI(ctx)
+	if err != nil {
+		return nil, err
 	}
 	refspec, err := parseReference(r.GetImage().GetImage())
 	if err != nil {
@@ -188,18 +208,18 @@ func (in *instrumentedService) PullImage(ctx context.Context, r *runtime.PullIma
 }
 
 func (in *instrumentedService) RemoveImage(ctx context.Context, r *runtime.RemoveImageRequest) (_ *runtime.RemoveImageResponse, err error) {
-	cri := in.getCRI()
-	if cri == nil {
-		return nil, errors.New("server is not initialized yet")
+	cri, err := in.getCRI(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	return cri.RemoveImage(ctx, r)
 }
 
 func (in *instrumentedService) ImageFsInfo(ctx context.Context, r *runtime.ImageFsInfoRequest) (res *runtime.ImageFsInfoResponse, err error) {
-	cri := in.getCRI()
-	if cri == nil {
-		return nil, errors.New("server is not initialized yet")
+	cri, err := in.getCRI(ctx)
+	if err != nil {
+		return nil, err
 	}
 	return cri.ImageFsInfo(ctx, r)
 }
